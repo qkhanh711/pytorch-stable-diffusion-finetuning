@@ -2,11 +2,8 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from ddpm import DDPMSampler
-
-WIDTH = 512
-HEIGHT = 512
-LATENTS_WIDTH = WIDTH // 8
-LATENTS_HEIGHT = HEIGHT // 8
+from utils import rescale, get_time_embedding
+from config import WIDTH, HEIGHT, LATENTS_WIDTH, LATENTS_HEIGHT
 
 def generate(
     prompt,
@@ -83,7 +80,6 @@ def generate(
         if input_image:
             encoder = models["encoder"]
             encoder.to(device)
-
             input_image_tensor = input_image.resize((WIDTH, HEIGHT))
             # (Height, Width, Channel)
             input_image_tensor = np.array(input_image_tensor)
