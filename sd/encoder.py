@@ -69,7 +69,15 @@ class VAE_Encoder(nn.Sequential):
             nn.Conv2d(8, 8, kernel_size=1, padding=0), 
         )
 
-    def forward(self, x, noise):
+    def forward(self, x, noise=None):
+       # Generate a dummy noise tensor if not provided
+        if noise is None:
+            # The noise tensor should have a shape of (batch_size, 4, height/8, width/8)
+            # Match this to your input dimensions
+            batch_size, _, height, width = x.shape
+            noise = torch.randn(batch_size, 4, height // 8, width // 8).to(x.device)
+
+        # Proceed with the original forward logic
         # x: (Batch_Size, Channel, Height, Width)
         # noise: (Batch_Size, 4, Height / 8, Width / 8)
 

@@ -25,7 +25,7 @@ class CLIPLayer(nn.Module):
         
         # Pre-attention norm
         self.layernorm_1 = nn.LayerNorm(n_embd)
-        # Self attention
+        # Self attention with attention mask
         self.attention = SelfAttention(n_head, n_embd)
         # Pre-FNN norm
         self.layernorm_2 = nn.LayerNorm(n_embd)
@@ -33,38 +33,25 @@ class CLIPLayer(nn.Module):
         self.linear_1 = nn.Linear(n_embd, 4 * n_embd)
         self.linear_2 = nn.Linear(4 * n_embd, n_embd)
 
-    def forward(self, x):
-        # (Batch_Size, Seq_Len, Dim)
+    def forward(self, x, attention_mask=None):
+        # Residual connection
         residue = x
         
-        ### SELF ATTENTION ###
-
-        # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
+        # Apply layer normalization before attention
         x = self.layernorm_1(x)
-        
-        # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
-        x = self.attention(x, causal_mask=True)
-        
-        # (Batch_Size, Seq_Len, Dim) + (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
+
+        # Apply self-attention with the attention mask
+        x = self.attention(x, attention_mask)
+
+        # Residual connection
         x += residue
 
-        ### FEEDFORWARD LAYER ###
-        # Apply a feedforward layer where the hidden dimension is 4 times the embedding dimension. 
-
+        # Apply feedforward network with another residual connection
         residue = x
-        # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         x = self.layernorm_2(x)
-        
-        # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, 4 * Dim)
         x = self.linear_1(x)
-        
-        # (Batch_Size, Seq_Len, 4 * Dim) -> (Batch_Size, Seq_Len, 4 * Dim)
-        x = x * torch.sigmoid(1.702 * x)   # QuickGELU activation function
-        
-        # (Batch_Size, Seq_Len, 4 * Dim) -> (Batch_Size, Seq_Len, Dim)
+        x = x * torch.sigmoid(1.702 * x)  # QuickGELU activation function
         x = self.linear_2(x)
-        
-        # (Batch_Size, Seq_Len, Dim) + (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         x += residue
 
         return x
@@ -80,16 +67,16 @@ class CLIP(nn.Module):
 
         self.layernorm = nn.LayerNorm(768)
     
-    def forward(self, tokens: torch.LongTensor) -> torch.FloatTensor:
-        tokens = tokens.type(torch.long)
-        
+    def forward(self, input_ids: torch.LongTensor, attention_mask =None) -> torch.FloatTensor:
+        tokens = input_ids.type(torch.long)
+
         # (Batch_Size, Seq_Len) -> (Batch_Size, Seq_Len, Dim)
         state = self.embedding(tokens)
 
-        # Apply encoder layers similar to the Transformer's encoder.
+        # Apply each encoder layer with the attention mask
         for layer in self.layers: 
-            # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
-            state = layer(state)
+            state = layer(state, attention_mask=attention_mask)
+        
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         output = self.layernorm(state)
         
