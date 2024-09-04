@@ -27,6 +27,8 @@ def train(
     batch_size=4,
     lr=1e-4,
     size=(128, 128),
+    rate=1.0,
+    path="../../data/finetuned_models"
 ):
     
     # Prepare dataset and dataloader
@@ -116,7 +118,7 @@ def train(
     # Save trained models
     # model_file = "../data/v1-5-pruned-emaonly.ckpt"
     # models = model_loader.preload_models_from_standard_weights(model_file, DEVICE)
-    model_save_path = "../../data/finetuned_models.ckpt"
+    model_save_path = f"{path}{rate}.ckpt"
     torch.save({
         "encoder": encoder.state_dict(),
         "diffusion": diffusion.state_dict(),
@@ -134,11 +136,10 @@ from ddpm import DDPMSampler
 from config import WIDTH, HEIGHT, LATENTS_WIDTH, LATENTS_HEIGHT
 from dataloaders import TrafficSignsDataset, load_data
 from utils import get_time_embedding
-from transformers import AutoTokenizer
 
 class TrafficSignTrainer(pl.LightningModule):
     def __init__(self, models, tokenizer, dataset_path, prompt, uncond_prompt=None, strength=0.8, do_cfg=True, cfg_scale=7.5,
-                 sampler_name="ddpm", n_inference_steps=50, batch_size=4, lr=1e-4, size=(128, 128), seed=None, device="cuda"):
+                 sampler_name="ddpm", n_inference_steps=50, batch_size=4, lr=1e-4, size=(128, 128), seed=None, device="cuda", rate=1.0, path="../../data/finetuned_models"):
         super(TrafficSignTrainer, self).__init__()
         self.encoder = models["encoder"]
         self.diffusion = models["diffusion"]
@@ -159,6 +160,8 @@ class TrafficSignTrainer(pl.LightningModule):
         self.seed = seed
         self._device = torch.device(device)
         self.automatic_optimization = False  # Disable automatic optimization
+        self.rate = rate
+        self.path = path
 
         # Prepare dataset and dataloader
         images, _ = load_data(dataset_path)
@@ -233,4 +236,13 @@ class TrafficSignTrainer(pl.LightningModule):
 
     def on_epoch_end(self):
         print(f'Epoch {self.current_epoch + 1} completed')
+
+    def save_model(self):
+        torch.save({
+            "encoder": self.encoder.state_dict(),
+            "diffusion": self.diffusion.state_dict(),
+            "decoder": self.decoder.state_dict(),
+            "clip": self.clip.state_dict()
+        }, f"{self.path}{self.rate}.ckpt")
+        print(f"Models saved to {self.path}{self.rate}")
 
