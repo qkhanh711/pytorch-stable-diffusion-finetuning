@@ -7,6 +7,7 @@ from ddpm import DDPMSampler
 from config import WIDTH, HEIGHT, LATENTS_WIDTH, LATENTS_HEIGHT
 from dataloaders import  TrafficSignsDataset, load_data, ReshapeTransform
 from utils import rescale, get_time_embedding
+import pytorch_lightning as pl
 
 
 def train(
@@ -27,6 +28,7 @@ def train(
     batch_size=4,
     lr=1e-4,
     size=(128, 128),
+    parallel=False,
 ):
     
     # Prepare dataset and dataloader
@@ -125,16 +127,6 @@ def train(
     }, model_save_path)
     print(f"Models saved to {model_save_path}")
     
-import torch
-import pytorch_lightning as pl
-import numpy as np
-from torch.utils.data import DataLoader
-from torch.optim import Adam
-from ddpm import DDPMSampler
-from config import WIDTH, HEIGHT, LATENTS_WIDTH, LATENTS_HEIGHT
-from dataloaders import TrafficSignsDataset, load_data
-from utils import get_time_embedding
-from transformers import AutoTokenizer
 
 class TrafficSignTrainer(pl.LightningModule):
     def __init__(self, models, tokenizer, dataset_path, prompt, uncond_prompt=None, strength=0.8, do_cfg=True, cfg_scale=7.5,
